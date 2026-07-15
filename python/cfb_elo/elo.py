@@ -93,9 +93,11 @@ class EloRatingSystem:
         self.ratings: dict[str, float] = {}
         self._last_season: dict[str, int] = {}
 
-    def _preseason_adjust(self, team: str, season: int, tier: str) -> float:
+    def preseason_rating(self, team: str, season: int, tier: str) -> float:
         """Lazily regress a team's rating toward its tier mean the first time
-        it's seen in a new season; initialize new teams at the tier mean."""
+        it's seen in a new season; initialize new teams at the tier mean.
+        Public so a Phase 4 caller can seed next season's starting ratings
+        directly from the state left behind by a historical run()."""
         tier_mean = self.config.tier_mean(tier)
 
         if team not in self.ratings:
@@ -121,8 +123,8 @@ class EloRatingSystem:
             home_tier = classify_team_tier(g.home_team, g.home_conference, g.home_classification)
             away_tier = classify_team_tier(g.away_team, g.away_conference, g.away_classification)
 
-            r_home = self._preseason_adjust(g.home_team, g.season, home_tier)
-            r_away = self._preseason_adjust(g.away_team, g.season, away_tier)
+            r_home = self.preseason_rating(g.home_team, g.season, home_tier)
+            r_away = self.preseason_rating(g.away_team, g.season, away_tier)
 
             expected_home = 1.0 / (1.0 + 10 ** (-((r_home + self.config.home_field_advantage) - r_away) / 400.0))
             home_won = g.home_points > g.away_points

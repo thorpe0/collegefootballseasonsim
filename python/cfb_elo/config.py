@@ -21,3 +21,6 @@ START_SEASON = 2021
 END_SEASON = 2025
 
 SEASONS = list(range(START_SEASON, END_SEASON + 1))
+
+# The season Phase 4 simulates -- the next one after our historical pull.
+TARGET_SEASON = END_SEASON + 1
