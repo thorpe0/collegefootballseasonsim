@@ -14,21 +14,30 @@ import logging
 import pandas as pd
 
 from cfb_elo import config
-from cfb_elo.backtest import calibration_table, grid_search_walk_forward, select_final_config
+from cfb_elo.backtest import brier_score, calibration_table, grid_search_walk_forward, home_rows
 from cfb_elo.elo import EloConfig, EloRatingSystem
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 
-# Widened from the initial pass: mov_cap and home_field_advantage both hit
-# the edge of the original grid (21-35 / 45-85) in every fold, meaning the
-# true optimum was outside the search range rather than settled inside it.
+# k_factor, regression_pct, and home_field_advantage converged to stable
+# interior values across two widened passes (~25-35, ~0.2-0.5, 45).
+#
+# mov_cap never converged -- it kept getting pushed to whatever ceiling the
+# grid allowed (35 -> 49 -> 70), but a direct comparison with a 95% CI on
+# Brier score showed the entire mov_cap=28..70 range is statistically
+# indistinguishable (spread of 0.0004 vs. a CI half-width of 0.0059): the
+# log-dampening in the MOV multiplier already suppresses blowout impact, so
+# the explicit cap stops mattering once it's above ~30-35. It's fixed at 35
+# (top of the original 28-35 target range) rather than grid-selected, since
+# a higher value would be picking noise while defeating the point of having
+# a cap at all.
 GRID = dict(
-    k_values=(10, 15, 20, 25, 30, 35),
-    mov_cap_values=(21, 28, 35, 42, 49),
-    regression_values=(0.1, 0.2, 0.35, 0.5, 0.65),
-    hfa_values=(5, 25, 45, 65),
+    k_values=(20, 25, 30, 35),
+    mov_cap_values=(35,),
+    regression_values=(0.2, 0.3, 0.35, 0.4, 0.5),
+    hfa_values=(35, 40, 45, 50, 55),
 )
 
 
@@ -59,9 +68,19 @@ def main() -> None:
     avg_baseline = fold_df["baseline_brier_0.5"].mean()
     print(f"\nAverage out-of-sample Brier: {avg_test_brier:.4f}  (vs. always-guess-0.5 baseline: {avg_baseline:.4f})")
 
-    logger.info("=== Final config: grid search over all seasons ===")
-    final_cfg, final_train_brier = select_final_config(games, **GRID)
-    print(f"\nFinal chosen config (fit on all {config.START_SEASON}-{config.END_SEASON} data):")
+    # Locked from direct sensitivity sweeps (see conversation/commit history),
+    # not a fresh grid-argmin: k_factor, home_field_advantage, and
+    # regression_pct all showed genuine interior optima (U-shaped Brier vs.
+    # parameter, degrading on both sides, well outside the ~+/-0.006 95% CI
+    # noise band) at these values. mov_cap is flat above ~30 (log-dampening
+    # already does the work) so it's kept at 35 -- the top of the originally
+    # requested 28-35 range -- rather than an arbitrarily large grid-selected
+    # value that would defeat the point of having a cap.
+    final_cfg = EloConfig(k_factor=30, mov_cap=35, regression_pct=0.35, home_field_advantage=45)
+    home_all = home_rows(EloRatingSystem(final_cfg).run(games))
+    home_all = home_all[home_all["season"] > home_all["season"].min()]
+    final_train_brier = brier_score(home_all["win_probability"], home_all["won"].astype(float))
+    print(f"\nFinal locked config (fit on all {config.START_SEASON}-{config.END_SEASON} data):")
     print(final_cfg)
     print(f"In-sample Brier with this config: {final_train_brier:.4f}")
 
