@@ -97,10 +97,11 @@ def pull_all_seasons(seasons: list[int]) -> pd.DataFrame:
 
 def main() -> None:
     combined = pull_all_seasons(config.SEASONS)
-    out_path = config.DATA_PROCESSED_DIR / f"games_{config.START_SEASON}_{config.END_SEASON}.parquet"
-    combined.to_parquet(out_path, index=False)
+    stem = f"games_{config.START_SEASON}_{config.END_SEASON}"
+    combined.to_parquet(config.DATA_PROCESSED_DIR / f"{stem}.parquet", index=False)
+    combined.to_csv(config.DATA_PROCESSED_DIR / f"{stem}.csv", index=False)
 
-    logger.info("Wrote %d games to %s", len(combined), out_path)
+    logger.info("Wrote %d games to %s.parquet / .csv", len(combined), stem)
     logger.info(
         "FCS-opponent games: %d / %d (%.1f%%)",
         combined["is_fcs_game"].sum(), len(combined),
