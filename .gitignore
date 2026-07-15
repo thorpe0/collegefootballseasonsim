@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project data (regenerate via python/cfb_elo/data_pull.py)
+python/data/raw/*.parquet
+python/data/processed/*.parquet

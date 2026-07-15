@@ -1,0 +1,4 @@
+cfbd>=5.16.0
+pandas>=2.2
+pyarrow>=15.0
+python-dotenv>=1.0
