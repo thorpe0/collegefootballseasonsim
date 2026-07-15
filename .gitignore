@@ -220,3 +220,10 @@ __marimo__/
 # Project data (regenerate via python/cfb_elo/data_pull.py)
 python/data/raw/*.parquet
 python/data/processed/*.parquet
+python/data/**/*.csv
+python/data/**/*.json
+
+# Project-specific (explicit, in addition to the patterns above)
+.env
+__pycache__/
+*.pyc
